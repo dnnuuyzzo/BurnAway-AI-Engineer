@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual Environment
+venv/
+env/
+.env
+
+# Models & Data
+# Note: models directory is kept but large weights might be ignored
+models/*.keras
+models/*.h5
+
+# Keep the logs for TensorBoard
+!logs/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,192 @@
+﻿Initial Conceptualization (Adaptable)
+Project Idea:
+Description:
+"BurnAway" is a web-based burnout prediction application specifically designed for software developers. It utilizes deep learning and neural networks to recognize burnout patterns based on user activity.
+Objectives:
+The primary goal is to predict burnout levels by analyzing activity metrics such as screen time, commit frequency, and break durations. By doing so, it aims to maintain psychological health, ensure sustained innovation, and prevent productivity loss.
+Added Value:
+The application mitigates the negative impacts of severe stress, reducing potential drops in performance and the fostering of a toxic work culture, ultimately improving both software quality and developer wellbeing.
+Feasibility Study:
+Market Analysis:
+* Competitive Landscape: The current market is saturated but fragmented into three tiers: Enterprise Engineering Platforms (e.g., LinearB, Swarmia) which use lagging DevOps indicators; Employee Engagement tools (e.g., Happily.ai) which rely on subjective, often biased pulse surveys; and Time Trackers (e.g., Time Doctor) which are highly invasive.
+* BurnAway’s Whitespace: BurnAway acts as a leading indicator by using Deep Learning to bridge the gap between macro-level Git analytics and micro-level invasive tracking. It predicts burnout before it happens by synthesizing physiological rhythm data (screen time, breaks) with output data (commits).
+Technical Analysis:
+* Full-Stack (FE/BE): Built with React, Tailwind/Bootstrap, and bundled via Webpack/Vite. The backend relies on Express.js for RESTful APIs (capable of database storage) and Axios for networking. The application will feature a responsive UI and be deployed via free hosting (GitHub Pages, Netlify, or Vercel).
+* AI Engineer: The Deep Learning model will be built using TensorFlow Functional API/Subclassing, implementing custom components (Layer/Loss/Callback) and a custom training loop (tf.GradientTape). It will be deployed via FastAPI/Flask, aiming for ≥85% accuracy and ≤0.02 MAE. It includes Generative AI API integration for secondary features and TensorBoard logging.
+* Data Scientist: Responsible for end-to-end data wrangling, EDA, feature engineering, and A/B testing in Python. Insights will be delivered via an interactive Streamlit dashboard deployed on Streamlit Cloud, culminating in a comprehensive technical PDF report.
+Financial Analysis:
+The project operates on a strictly $0 budget. As a bootcamp capstone initiative powered by DBS Foundation, the team will leverage entirely free, open-source tools, frameworks, and free-tier hosting services to build and deploy the platform without incurring any costs.
+Stakeholder Analysis (Simplified)
+Stakeholder Identification:
+List of Stakeholders:
+* The Development Team (6 Members): 1 Project Manager/Full-Stack Engineer, 1 Full-Stack Engineer, 2 Data Scientists, and 2 AI Engineers.
+* Target End-Users: Software Developers experiencing or at risk of burnout.
+* Program Evaluators/Sponsors: Coding Camp Mentors & DBS Foundation.
+Roles and Interests:
+* Project Manager & Full-Stack Engineers (2): Responsible for building responsive web layouts, creating UI mockups, and integrating AI/ML APIs seamlessly to avoid crashes. They manage networking (Axios), bundlers (Webpack/Vite), backend routing (Express.js), and platform deployment (GitHub Pages/Netlify/Vercel).
+* Data Scientists (2): Responsible for end-to-end data wrangling (gathering, assessing, cleaning), defining business questions, conducting EDA, and feature engineering. They also build the Streamlit dashboard, perform A/B testing, and compile the final PDF technical report.
+* AI Engineers (2): Responsible for the core deep learning architecture using TensorFlow Functional API/Subclassing. They handle custom model components, manual training loops (tf.GradientTape), Generative AI integration, TensorBoard monitoring, and exporting models for inference via FastAPI/Flask.
+* Target End-Users (Software Developers): Interested in receiving accurate, non-invasive insights regarding their work habits to proactively manage their mental health and prevent burnout.
+Stakeholder Needs:
+Identified Needs:
+The absolute baseline need for this project is to fulfill all technical rubric requirements set by the bootcamp. These minimum requirements include:
+* FE/BE Needs: RESTful API standards, successful AI integration on the frontend/backend without crashing, responsive design with CSS frameworks (Bootstrap/Tailwind), and successful cloud deployment.
+* AI Needs: The model must achieve a minimum accuracy of 85% and a maximum MAE of 0.02. It requires at least one custom component (Layer/Loss/Callback), a full custom training loop, Generative AI implementation, and production-ready export formats (.keras/SavedModel).
+* Data Science Needs: Clear business problem definition, robust EDA and visualizations, deployment of the interactive Streamlit dashboard to the public cloud, and a comprehensive end-to-end technical PDF report.
+Information Collection Methods:
+* For Team/Evaluators: Weekly meetings, code reviews, and Git version control tracking to ensure alignment with bootcamp rubrics.
+* For Users/Data: Dataset gathering via public sources or scraping, and evaluating feature effectiveness via A/B Testing in Python.
+Communication Plan:
+* Internal Team: Regular progress syncs, task delegation via project management boards, and code collaboration via GitHub.
+* External/Final Delivery: The Streamlit dashboard for data presentation, and the comprehensive final Technical Report (PDF) detailing the project from Problem Discovery to Final Results.
+Requirements Gathering (With Examples)
+User Stories / Use Cases:
+List of user stories:
+* As a Software Developer, I want to view my burnout prediction score based on my activity so that I can take preventive breaks before my performance drops.
+* As a Software Developer, I want to interact with a responsive UI that displays my screen time and commit frequency clearly across any device.
+* As a Data Scientist, I want to access raw user activity data so that I can perform feature engineering and A/B testing to refine the model's inputs.
+Detailed use cases:
+* Burnout Inference: The user interacts with the React frontend, which sends data via Axios to the Express backend, then to the FastAPI ML endpoint. The deep learning model calculates the prediction and returns it to the user without crashing the app.
+* Dashboard Exploration: A user or evaluator accesses the Streamlit Cloud dashboard to explore Exploratory Data Analysis (EDA) visualizations and project insights.
+Requirements Workshops:
+Planning of Workshops:
+* Frequency: 1x Weekly Sync Meetings.
+* Project Duration constraint: All requirements must be executed and finalized before the 4-week deadline.
+* Goals: Sprint planning, blocker resolution, and continuous rubric-alignment checks.
+Participants:
+* Project Manager, Full-Stack Engineers, Data Scientists, and AI Engineers.
+Workshop Summary:
+* Weekly alignment ensures frontend-backend-AI integration is on track, data pipelines are feeding clean data, and the core ML model is iterating toward the minimum 85% accuracy threshold.
+Requirement Documentation:
+Functional Requirements:
+* A responsive web frontend built with React, bundled with Webpack/Vite, styled via Tailwind/Bootstrap.
+* An Express.js backend exposing standard RESTful APIs to handle data flow and potential database storage.
+* An isolated AI inference REST API (FastAPI/Flask) to serve predictions.
+* An interactive Streamlit dashboard visualizing EDA, answering business questions, and showing feature correlations.
+* Integration of a Generative AI API as a secondary feature (e.g., providing custom wellbeing advice based on the burnout score).
+Non-Functional Requirements:
+* Performance: The AI model must hit strict thresholds: ≥ 85% accuracy and ≤ 0.02 MAE.
+* Reliability: The core web app must seamlessly communicate with the AI model without causing application crashes.
+* Architecture Constraints: Deep Learning models must implement custom components (Layer/Loss/or Callback) and use a manual training loop (tf.GradientTape).
+* Deployability: Must deploy successfully to free-tier cloud platforms (GitHub Pages/Netlify/Vercel for web, Streamlit Cloud for dashboard).
+Requirement Prioritization:
+* Critical: Meeting all bootcamp rubrics (No-crash ML integration, custom DL components, responsive UI, successful deployments).
+* Medium: UI/UX aesthetic enhancements, advanced generative AI features.
+Specification Writing (User-Friendly Language)
+Specification Document:
+Document Structure:
+* Introduction: Project purpose, overview, and intended audience.
+* System Overview: Description of BurnAway's architecture and modules (Web App, AI Service, Data Dashboard).
+* Technical Rubrics Checklist: Explicit mapping of bootcamp requirements to implemented features.
+* Deployment & Inference Guide: Instructions for reviewers on how to test the ML model and web endpoints.
+Detailed Content:
+The specification mandates a seamless, crash-free pipeline. It strictly outlines how the frontend React app will capture/display user activity data, send it to the Express.js backend via Axios, and forward it to a FastAPI server for prediction using a custom-trained TensorFlow model (.keras/SavedModel). It also details the Streamlit reporting dashboard requirements for exploratory data analysis (EDA).
+Revisions and Validations:
+* Managed via GitHub pull requests (PRs).
+* The Project Manager and specific domain leads (Data Science/AI/Full-Stack) validate features against the official bootcamp grading rubrics prior to merging any code into the main branch.
+Technical Specifications:
+Architecture:
+The application follows a distributed microservices-style architecture:
+1. Frontend Client: React-based single-page application (SPA), styled with Tailwind/Bootstrap, and bundled via Webpack/Vite.
+2. Backend Gateway: Node.js/Express.js RESTful API handling business logic, optional database persistence, and API orchestration.
+3. AI Inference Service: Standalone Python server (FastAPI/Flask) serving the deep learning model.
+4. Data Analytics Dashboard: Isolated Streamlit application hosted on Streamlit Cloud for interactive EDA and reporting.
+Used Technologies:
+* Frontend: React JS, JavaScript, Tailwind/Bootstrap, Webpack/Vite, Axios, HTML/CSS.
+* Backend: Node.js, Express.js.
+* AI/Machine Learning: Python, TensorFlow, Keras, FastAPI/Flask.
+* Data Science: Streamlit, Numpy, Pandas, Scikit-Learn, Matplotlib, Seaborn, Jupyter Notebook.
+* Collaboration & Deployment: Git, GitHub, GitHub Pages / Vercel / Netlify (Frontend), Streamlit Cloud (Dashboard).
+Technical Constraints:
+* Model Constraints: Mandatory use of tf.GradientTape for full custom training loops and implementation of at least one advanced custom component (Layer/Loss/Callback).
+* Performance Constraints: Minimum model accuracy strictly capped at 85% with a maximum MAE of 0.02.
+* Time/Budget Constraints: Must be fully developed, integrated, and deployed within a 4-week timeline using only free-tier technologies and $0 budget.
+Scope Definition (Flexible)
+Scope Statement:
+Included in Scope:
+* Development of a responsive web application optimized for desktop and mobile browsers.
+* User authentication and profile management system.
+* Manual input forms for users to submit their periodic work metrics (e.g., screen time, commit frequency).
+* Database integration via Express.js to store and retrieve historical burnout predictions for users.
+* Standalone AI inference API (FastAPI/Flask) for serving the deep learning model.
+* Public-facing Streamlit dashboard for Exploratory Data Analysis (EDA).
+Excluded from Scope:
+* Native mobile application development (iOS/Android).
+* Automated API integrations with third-party developer tools (e.g., GitHub, Jira, Time Doctor) to fetch activity data automatically.
+* Complex, continuous Generative AI chatbots (Gen-AI recommendations are strictly an optional "nice-to-have" if time permits).
+Limitations and Exclusions:
+Identified Limitations:
+* Time Constraint: An extremely strict 4-week development window.
+* Budget Constraint: $0 budget limitation requires reliance on free-tier cloud services, which may impose bandwidth, server uptime, or storage limits (especially for the database and AI inference).
+Specified Exclusions:
+* Automated Data Tracking: Automated background tracking of user physiological or machine data is entirely excluded. All input to the AI model will rely on manual user entry to simplify the MVP scope and ensure the project finishes on time.
+Roadmap and Planning (Interactive)
+Project Milestones:
+List of Milestones:
+* Milestone 1 (End of Week 1): Foundational setup complete (Data wrangling done, UI mockups approved, base repositories created).
+* Milestone 2 (End of Week 2): Core modules functional (Baseline Deep Learning model hitting initial metrics, React UI & Express backend communicating).
+* Milestone 3 (End of Week 3): Full Integration (AI Model successfully wrapped in FastAPI and receiving Axios requests from the frontend; Streamlit dashboard published).
+* Milestone 4 (End of Week 4): Project Finalization (QA Testing, bug fixing, final cloud deployments, and submission of the PDF Technical Report).
+Timeline Planning:
+Preliminary Calendar (Parallel Execution Mode):
+* Week 1: Parallel Setup & Foundation
+   * Data Science: Clean and perform EDA on the acquired 7000-row dataset, handling the ~2% missing values.
+   * AI Engineering: Set up TensorFlow environments. Define the model architecture based on the known dataset features (age, daily_work_hours, commits_per_day, etc.).
+   * Full-Stack: Design UI/UX mockups, set up React (Vite/Webpack) and Express.js repositories. Agree on API JSON payload structures.
+* Week 2: Concurrent Development
+   * AI Engineering: Train the DL model using tf.GradientTape and custom callbacks/layers. Optimize to hit >85% accuracy and <0.02 MAE targeting the burnout_level output.
+   * Full-Stack: Build the responsive React frontend forms (for manual metric input) and the Express.js database connection.
+   * Data Science: Perform feature engineering, A/B Testing setups, and begin building the Streamlit dashboard.
+* Week 3: System Integration
+   * AI Engineering: Export model (.keras/SavedModel) and serve it via a FastAPI/Flask REST API.
+   * Full-Stack: Connect the Express.js backend to the FastAPI endpoint using Axios. Handle error states to prevent app crashes.
+   * Data Science: Deploy the final Streamlit Dashboard to Streamlit Cloud.
+* Week 4: Finalization & Delivery
+   * All Teams: End-to-end system testing, bug fixing, and final cloud deployments (GitHub Pages/Vercel).
+   * Data Science: Finalize the comprehensive Technical Report (Problem Discovery to Final Results) in PDF format.
+Resource Allocation:
+* Project Manager: Oversees timeline, milestone tracking, and cross-team integration (Week 1-4).
+* Full-Stack Engineers (2): Dedicated to UI mockups, React frontend, Express backend, and deployment (Weeks 1-4).
+* AI Engineers (2): Dedicated to model architecture, custom training loops, and FastAPI endpoint (Weeks 1-3).
+* Data Scientists (2): Dedicated to dataset wrangling, EDA, Streamlit dashboard, A/B testing, and reporting (Weeks 1-4).
+Resource Planning:
+Budget:
+* $0.00 - All infrastructure will utilize free-tier allowances.
+Team:
+* 6 Bootcamp Members (1 PM/FS, 1 FS, 2 DS, 2 AI).
+Tools and Technologies:
+* React, Tailwind, Express.js, Node.js, TensorFlow, FastAPI, Streamlit, Pandas, Scikit-Learn, GitHub, Vercel/Netlify.
+Risk Management (Interactive)
+Risk Identification:
+List of Risks:
+1. System Integration Failure: The React Frontend and Express Backend crashing when attempting to connect to the FastAPI Machine Learning endpoint.
+2. Severe Time Constraints: Development delays causing the team to run out of time in Week 4 for crucial QA testing, bug fixing, and final report documentation.
+3. Data Security & Feature Optimization: Poor handling of user data or failure to optimize core features before deployment.
+4. AI Underperformance (Lower Priority): The Deep Learning model struggling to hit the strict 85% accuracy/0.02 MAE rubric.
+Risk Analysis:
+* Integration Failure: High Likelihood, High Impact. Cross-framework communication (Node.js to Python) is often a bottleneck and can easily cause fatal crashes if payload structures mismatch.
+* Time Constraints: High Likelihood, High Impact. A strict 4-week timeline leaves almost zero room for error, making delays incredibly dangerous to the final bootcamp submission.
+* AI Underperformance: Low/Medium Likelihood, Medium Impact. The dataset is solid (7000 rows, realistic dependencies), making it highly probable the team will achieve the required accuracy metrics with enough tuning.
+Risk Mitigation Plan:
+Mitigation Strategies:
+* For Integration Failure: Define strict JSON API contracts between the Full-Stack and AI teams in Week 1. Implement basic API mocking so the frontend can test interactions before the final AI model is fully trained. Include robust try/catch error handling in Axios/Express to prevent total app crashes.
+* For Time Constraints: Enforce a strict "feature freeze" at the end of Week 3. Dedicate Week 4 exclusively to bug fixes, integration testing, and writing the PDF report. Use weekly meetings to continuously monitor progress.
+* For Security & Optimization: Ensure database calls are sanitized and leverage standard Express security practices.
+Validation and Approval (Efficient)
+Review Sessions:
+Planning of Sessions:
+* Schedule: Weekly team sync meetings to monitor progress, anticipate emerging problems, and conduct regular reporting.
+* Feedback and Adjustments: Code reviews conducted via GitHub Pull Requests (PRs). Team members will review cross-functional code to ensure rubric compliance before merging.
+Approval Process:
+Stakeholder Approval:
+* Final validation rests on the Coding Camp Mentors and DBS Foundation evaluators checking the deployed application and the comprehensive PDF report against the core rubrics.
+Communication Plan (Accessible)
+Communication Strategy:
+Communication Channels:
+* Code & Version Control: GitHub.
+* Day-to-day Chat & Quick Syncs: Team messaging platforms (e.g., WhatsApp, Slack, or Discord).
+* Documentation & Reports: Google Docs/Notion for drafting, finalized as PDF.
+Update Frequency:
+* Continuous updates via GitHub commits, with formal progress reports delivered during the weekly sync meeting.
+Feedback Management:
+* The Project Manager will track outstanding issues, bugs, and rubric checklists, delegating fixes to the respective Data, AI, or Full-Stack leads.

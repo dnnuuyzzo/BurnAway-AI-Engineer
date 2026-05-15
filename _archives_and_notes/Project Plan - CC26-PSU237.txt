@@ -1,0 +1,197 @@
+﻿Dokumen Project Plan
+Coding Camp 2026 powered by DBS Foundation
+
+
+ID Tim Capstone Project        : CC26-PSU237
+Tema Capstone                : Healthy Lives & Well-being
+Nama/Judul Proyek        : BurnAway
+List Anggota                : 
+1. CACC224D6X0556 - Salwa Syaharani Putri - AI Engineer - Aktif
+2. CDCC224D6Y0758 - Muhammad Fikri Rouzan Ash Shidik - Data Scientist - Aktif
+3. CACC224D6Y1221 - Danuardi Saputro - AI Engineer - Aktif
+4. CFCC288D6X2031 - Aulia Salsabila - Full-Stack Web Developer - Aktif
+5. CDCC224D6Y2679 - Hafidz Surya Afifi - Data Scientist - Aktif
+6. CFCC224D6Y2852 - Muhammad Radhya Firaz Maynard - Full-Stack Web Developer - Aktif
+
+
+1. Ringkasan Eksekutif
+Burnout secara resmi telah diakui oleh Organisasi Kesehatan Dunia (WHO) dalam Revisi ke-11 Klasifikasi Penyakit Internasional (ICD-11) sebagai fenomena pekerjaan (occupational phenomenon), bukan sekadar kondisi medis biasa.
+Banyak para pengembang perangkat lunak di industri pengembangan perangkat lunak saat ini mengalami burnout. Pada studi yang dilakukan oleh haystack analytics pada tahun 2021, 83% pengembang terdampak oleh burnout secara langsung. Hal ini berdampak negatif pada Kualitas Perangkat Lunak dan mendorong budaya kerja toksik.
+Kesejahteraan psikologis sangat berpengaruh pada kemampuan kita untuk berpikir kreatif. Sayangnya, beban kerja yang fokus pada logika rumit secara terus-menerus, cepatnya perubahan teknologi AI, dan rasa terisolasi saat bekerja seringkali memicu stres berat. Jika stres ini tidak ditangani dengan benar, hasilnya bukan hanya kelelahan, tapi juga penurunan produktivitas.
+Proyek aplikasi prediksi burnout ini adalah langkah strategis karena pencegahan stres dapat mereduksi potensi menurunnya performa, output yang buruk, dan kesejahteraan diri yang buruk. Selain membantu menjaga kesehatan psikologis, dasbor ini dirancang untuk membantu mengurangi programmer yang mengalami burnout, dan memastikan agar berinovasi tetap berjalan secara maksimal.
+Dari pernyataan di atas, bisa kita tarik beberapa pertanyaan sebagai berikut:
+1. Metrik aktivitas atau perilaku apa saja (misalnya: waktu layar, frekuensi commit, durasi istirahat) yang memiliki korelasi paling signifikan dalam memprediksi tingkat burnout seorang pengembang perangkat lunak?
+2. Apa saja fitur-fitur yang terdapat dalam aplikasi prediksi burnout untuk membantu meningkatkan kesejahteraan dan produktivitas bagi pengguna?
+3. Bagaimana aplikasi prediksi burnout dapat disesuaikan dengan kebutuhan pengguna untuk meningkatkan kesejahteraan psikologis pengguna?
+
+
+2. Cakupan Proyek dan Hasil Kerja
+1. Pengembangan Aplikasi berbasis website dengan fitur-fitur untuk mengenali burnout pada user dari aktivitas pengguna.
+2. Pembagian tanggung jawab tim untuk Project Manager, Front-End Developer, Back-End Developer, Data Scientist, AI Engineer.
+3. Milestone mingguan untuk memastikan proyek dapat rampung dalam durasi 4-5 Minggu.
+
+
+3. Jadwal Pengerjaan
+Kegiatan
+	Minggu Ke-1
+	Minggu Ke-2
+	Minggu Ke-3
+	Minggu Ke-4
+	Minggu Ke-5
+	Perencanaan & Desain Aplikasi (Ideasi, UI/UX Mockup)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Data Acquisition, Cleaning & EDA (Data Wrangling, EDA, Visualisasi)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Model Development (Training, Evaluation, Tuning)
+	
+
+	
+
+	
+
+	
+
+	
+
+	AI API Development (membuat API model dengan FastAPI/Flask untuk inference)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Front-End Development (membuat UI, form input, dashboard user)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Back-End Development (membangun REST API dengan Express.js)
+	
+
+	
+
+	
+
+	
+
+	
+
+	System Integration  (menghubungkan front-end dengan backend dan AI API)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Testing & Deployment (uji sistem, bug fixing, deploy aplikasi)
+	
+
+	
+
+	
+
+	
+
+	
+
+	Dokumentasi & Finalisasi (penulisan laporan, dokumentasi)
+	
+
+	
+
+	
+
+	
+
+	
+
+	
+
+4. Uraian Rencana Penugasan/Job Desk Setiap Learning Path
+Full-Stack Web Developer:
+* Membuat mockup aplikasi dan membangun user interface menggunakan React JS dan Tailwind untuk memastikan tampilan responsif di berbagai perangkat.
+* Membangun back-end menggunakan Node.js dan framework Express dengan RESTful API untuk autentikasi dan penyimpanan data ke database.
+* Mengintegrasikan model AI ke dalam aplikasi melalui Axios untuk menyediakan fitur prediksi kepada user.
+* Mengelola komunikasi data antara front-end dan back-end untuk memastikan interaksi API berjalan lancar.
+* Menggunakan module bundler untuk mengoptimalkan proses pengembangan aplikasi.
+* Melakukan pengujian fitur utama secara menyeluruh untuk memastikan aplikasi berjalan stabil tanpa crash sebelum dipublikasikan.
+* Melakukan deployment aplikasi web ke platform cloud supaya dapat diakses secara publik.
+Data Scientist:
+* Menganalisis permasalahan terkait burnout pada developer untuk menentukan solusi utama dan mendefinisikan pertanyaan bisnis.
+* Melakukan proses gathering, assessing, cleaning, dan penyusunan data dictionary untuk menjamin integritas dataset.
+* Melakukan EDA dan memvisualisasikan untuk menemukan pola, korelasi, dan menjawab pertanyaan bisnis yang telah ditetapkan.
+* Melakukan feature engineering dan penanganan imbalanced dataset untuk memastikan data siap diproses.
+* Mengimplementasikan A/B Testing untuk menguji signifikansi variabel.
+* Mengembangkan dashboard menggunakan Streamlit dan melakukan deployment ke Streamlit Cloud.
+* Menyusun laporan mulai dari tahap Problem Discovery sampai hasil evaluasi akhir proyek.
+AI Engineer:
+* Merancang model menggunakan TensorFlow serta mengimplementasikan custom training loop dan komponen kustom untuk mencapai target akurasi minimal 85%.
+* Mengintegrasikan TensorBoard untuk memvisualisasikan metrik pelatihan secara menyeluruh dan memastikan model memenuhi standar performa pada dataset Developer Burnout Prediction.
+* Menyimpan model yang telah dilatih dan menyusun kode inference yang efisien untuk memproses prediksi.
+* Mengembangkan REST API menggunakan FastAPI untuk menyajikan model dan mengintegrasikan Generative AI API sebagai fitur sekunder dalam aplikasi.
+
+
+5. Sumber Daya Proyek
+1. Front-end
+* HTML: Untuk membuat struktur dasar halaman web.
+* CSS: Untuk mengatur tampilan (warna, layout, desain UI).
+* Javascript: Untuk interaksi di web.
+* React JS: Framework JavaScript untuk membuat UI yang dinamis dan interaktif.
+* Tailwind: Framework CSS untuk mempercepat styling UI tanpa bikin CSS manual banyak.
+2. Back-end
+* Node JS: Runtime untuk menjalankan JavaScript di server (backend).
+* Express.js: Framework di Node.js untuk membuat REST API (penghubung front-end dengan AI model)
+3. Artificial Intelligence
+* Python: Bahasa utama untuk AI dan data processing.
+* TensorFlow: Library untuk membangun dan melatih model AI/deep learning.
+* Pytorch: Alternatif TensorFlow untuk deep learning (lebih fleksibel untuk eksperimen).
+* Keras: API dari TensorFlow untuk mempermudah pembuatan model neural network.
+* FastAPI/Flask: Framework Python untuk membuat API model AI.
+4. Data Science
+* Streamlit: Untuk membuat dashboard interaktif.
+* Numpy: Untuk perhitungan numerik (array, matrix).
+* Pandas: Untuk mengolah data (baca CSV, cleaning data, manipulasi dataset).
+* Scikit-Learn: Untuk machine learning klasik (classification, regression, evaluasi model).
+* Matplotlib: Untuk visualisasi data dasar (grafik).
+* Seaborn: Untuk visualisasi data yang lebih menarik dan informatif.
+* Jupyter Notebook: Digunakan untuk eksplorasi data, analisis, dan eksperimen model machine learning secara interaktif.
+5. Version Control & Collaboration
+* Git dan Github: Digunakan untuk mengelola versi kode dan memfasilitasi kolaborasi tim dalam pengembangan proyek.
+
+
+6. Rencana Manajemen Risiko dan Isu
+1. Mengidentifikasi resiko atas keterlambatan pengembangan, masalah keamanan data, dan kegagalan atas pengoptimalan fitur-fitur.
+2. Melaksanakan weekly meeting untuk memantau progres proyek dan mengantisipasi potensi masalah yang dapat muncul.
+3. Melakukan report yang teratur untuk mengevaluasi progres dan resiko yang ada.
