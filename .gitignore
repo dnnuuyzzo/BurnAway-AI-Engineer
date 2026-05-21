@@ -12,9 +12,11 @@ env/
 .env
 
 # Models & Data
-# Note: models directory is kept but large weights might be ignored
 models/*.keras
 models/*.h5
+*.joblib
+*.pkl
+*.zip
 
 # Keep the logs for TensorBoard
 !logs/

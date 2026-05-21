@@ -13,16 +13,20 @@
 ```text
 .
 ├── api/
-│   ├── main.py                 # Backend FastAPI (Rate-limited)
-│   └── *.json                  # Metadata fitur & label untuk API
+│   └── main.py                        # Backend FastAPI (Rate-limited)
 ├── notebooks/
-│   └── BurnAway_AI_Engineer_v5.ipynb  # Main ML Pipeline (End-to-End)
-├── models/                     # Artifacts (Model .keras, Scaler .joblib)
-├── logs/                       # TensorBoard training logs
-├── _archives_and_notes/        # Dokumentasi lama & file eksperimen
-├── inference.py                # Standalone CLI inference script
-├── requirements.txt            # Dependensi Python
-└── Dockerfile                  # Konfigurasi containerization
+│   └── BurnAway_AI_Engineer.ipynb     # Main ML Pipeline (End-to-End)
+├── models/                            # Artifacts hasil training
+│   ├── burnaway_model_best.keras      # Model terbaik (checkpoint)
+│   ├── scaler.joblib                  # Scaler untuk preprocessing
+│   ├── class_labels.json              # Mapping label kelas
+│   ├── feature_cols.json              # Daftar nama fitur
+│   └── pipeline_config.json           # Konfigurasi pipeline
+├── logs/                              # TensorBoard training logs
+├── _archives_and_notes/               # Dokumentasi lama & file eksperimen
+├── inference.py                       # Standalone CLI inference script
+├── requirements.txt                   # Dependensi Python
+└── Dockerfile                         # Konfigurasi containerization
 ```
 
 ---
@@ -55,9 +59,12 @@ export GEMINI_API_KEY="your_api_key_here"
 ## 📈 Alur Kerja
 
 ### A. Training & Export
-Jalankan notebook `notebooks/BurnAway_AI_Engineer_v5.ipynb`. Notebook ini akan mengekspor:
-- `models/burnaway_model.keras`
+Jalankan notebook `notebooks/BurnAway_AI_Engineer.ipynb`. Notebook ini akan mengekspor:
+- `models/burnaway_model_best.keras`
 - `models/scaler.joblib`
+- `models/class_labels.json`
+- `models/feature_cols.json`
+- `models/pipeline_config.json`
 
 ### B. Uji Coba CLI
 Gunakan skrip `inference.py` untuk prediksi cepat via terminal:
@@ -107,5 +114,3 @@ Akses dokumentasi interaktif di: `http://localhost:8000/docs`
 ```
 
 ---
-
-*Project ini dikembangkan sebagai bagian dari Capstone Project DBS Coding Camp 2026.*

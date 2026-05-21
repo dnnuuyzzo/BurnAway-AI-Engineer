@@ -69,7 +69,7 @@ def main():
     parser.add_argument("--stress", type=float, default=85.0, help="Stress level (0-100)")
     args = parser.parse_args()
 
-    model_path = os.path.join("models", "burnaway_model.keras")
+    model_path = os.path.join("models", "burnaway_model_best.keras")
     scaler_path = os.path.join("models", "scaler.joblib")
 
     print("Loading Model and Scaler...")
