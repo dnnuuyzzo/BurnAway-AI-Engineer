@@ -14,19 +14,22 @@
 .
 ├── api/
 │   └── main.py                        # Backend FastAPI (Rate-limited)
-├── notebooks/
+│   ├── class_labels.json              # Mapping label kelas
+│   ├── feature_cols.json              # Daftar nama fitur
+│   └── pipeline_config.json           # Konfigurasi pipeline
+├── notebook/
 │   └── BurnAway_AI_Engineer.ipynb     # Main ML Pipeline (End-to-End)
 ├── models/                            # Artifacts hasil training
 │   ├── burnaway_model_best.keras      # Model terbaik (checkpoint)
 │   ├── scaler.joblib                  # Scaler untuk preprocessing
-│   ├── class_labels.json              # Mapping label kelas
-│   ├── feature_cols.json              # Daftar nama fitur
-│   └── pipeline_config.json           # Konfigurasi pipeline
+├── data/                              # Dataset
 ├── logs/                              # TensorBoard training logs
 ├── _archives_and_notes/               # Dokumentasi lama & file eksperimen
 ├── inference.py                       # Standalone CLI inference script
 ├── requirements.txt                   # Dependensi Python
-└── Dockerfile                         # Konfigurasi containerization
+├── .gitignore                         # File & folder yang diabaikan Git
+├── Dockerfile                         # Konfigurasi containerization
+└── README.md                          # Dokumentasi & panduan penggunaan
 ```
 
 ---
