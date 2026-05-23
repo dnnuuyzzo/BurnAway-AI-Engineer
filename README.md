@@ -121,6 +121,7 @@ Akses dokumentasi interaktif di: `http://localhost:8000/docs`
     "probabilities": { "Low": 0.01, "Medium": 0.07, "High": 0.92 }
   },
   "advice": "..."
+  "route": "Groq (REST)"
 }
 ```
 
