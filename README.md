@@ -36,34 +36,42 @@
 
 ## 🚀 Fitur Utama
 
-1.  **Multi-Task Deep Learning**: Memprediksi kategori *burnout* (Classification) sekaligus memberikan estimasi skor stres (Regression).
-2.  **Custom Architecture**: Menggunakan `FTTransformerBlock` untuk menangani fitur tabular dengan *attention mechanism*.
-3.  **GenAI Advisory Layer**: Terintegrasi dengan **Google Gemini API** untuk memberikan saran kesehatan mental yang personal berdasarkan hasil prediksi.
-4.  **Production-Ready API**: Dilengkapi dengan *rate limiting* (SlowAPI) dan validasi skema Pydantic.
+1. **Custom Deep Learning Architecture**: Menggunakan `BurnoutAttentionLayer` dengan *attention mechanism* dan *Residual Connections* untuk menangani fitur tabular secara efektif.
+2. **K-Fold Cross-Validation**: Validasi model dengan 5-fold stratified cross-validation untuk memastikan generalisasi yang robust.
+3. **BorderlineSMOTE**: Menangani ketidakseimbangan kelas dengan BorderlineSMOTE untuk menghasilkan data sintetis yang lebih representatif di batas keputusan antar kelas.
+4. **Custom Loss Function**: `WeightedCategoricalCrossentropy` dengan label smoothing untuk training yang lebih stabil.
+5. **Cosine Decay LR Scheduler**: Learning rate decay otomatis dengan warmup untuk konvergensi yang mulus.
+6. **GenAI Advisory Layer**: Terintegrasi dengan **Google Gemini API** dan **Groq (LLaMA 3.1)** sebagai fallback untuk memberikan saran kesehatan mental yang personal berdasarkan hasil prediksi.
+7. **Production-Ready API**: Dilengkapi dengan *rate limiting* (SlowAPI) dan validasi skema Pydantic.
 
 ---
 
 ## 🛠️ Persiapan & Instalasi
-
+ 
 ### 1. Instalasi Dependensi
-Pastikan Anda menggunakan Python 3.9 atau lebih tinggi.
+ 
+Pastikan menggunakan Python 3.9 atau lebih tinggi.
+ 
 ```bash
 pip install -r requirements.txt
 ```
-
+ 
 ### 2. Konfigurasi Environment
-Buat file `.env` di root directory atau set variabel lingkungan untuk fitur saran AI:
+ 
+Buat file `.env` di root directory atau set variabel lingkungan:
+ 
 ```bash
-export GEMINI_API_KEY="your_api_key_here"
+export GEMINI_API_KEY="your_gemini_api_key_here"
+export GROQ_API_KEY="your_groq_api_key_here"
 ```
-
+ 
 ---
 
 ## 📈 Alur Kerja
 
 ### A. Training & Export
 Jalankan notebook `notebooks/BurnAway_AI_Engineer.ipynb`. Notebook ini akan mengekspor:
-- `models/burnaway_model_best.keras`
+- `models/burnaway_model.keras`
 - `models/scaler.joblib`
 - `models/class_labels.json`
 - `models/feature_cols.json`
