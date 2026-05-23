@@ -1,0 +1,8 @@
+{
+  "num_features": 15,
+  "num_classes": 3,
+  "attention_units": 64,
+  "scaler_type": "RobustScaler",
+  "model_format": ".keras",
+  "target_accuracy": 0.85
+}
