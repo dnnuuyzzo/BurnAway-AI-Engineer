@@ -2,174 +2,351 @@ import os
 import argparse
 import numpy as np
 import joblib
+import requests
 import tensorflow as tf
-import google.generativeai as genai
 
-# Model components
+try:
+    import google.generativeai as genai
+    GENAI_SDK_AVAILABLE = True
+except ImportError:
+    GENAI_SDK_AVAILABLE = False
+
+# ── Constants ────────────────────────────────────────────────────────────────
+NUM_CLASSES     = 3
+CLASS_LABELS    = {0: "Low", 1: "Medium", 2: "High"}
+ATTENTION_UNITS = 64
+
+GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_MODEL    = "gemini-2.5-flash"
+
+GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "")
+GROQ_BASE_URL   = "https://api.groq.com/openai/v1/"
+GROQ_MODEL      = "llama-3.1-8b-instant"
+
+FEATURE_COLS = [
+    "age", "experience_years", "daily_work_hours", "sleep_hours",
+    "caffeine_intake", "bugs_per_day", "commits_per_day", "meetings_per_day",
+    "screen_time", "exercise_hours", "work_sleep_ratio",
+    "screen_time_intensity", "commit_bug_ratio", "work_category", "stress_level"
+]
+
+MODEL_PATH  = os.path.join("models", "burnaway_model.keras")
+SCALER_PATH = os.path.join("models", "scaler.joblib")
+
+
+# Model Components
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class FTTransformerBlock(tf.keras.layers.Layer):
-    def __init__(self, embed_dim=16, num_heads=2, **kwargs):
+class BurnoutAttentionLayer(tf.keras.layers.Layer):
+    def __init__(self, units: int = 32, **kwargs):
         super().__init__(**kwargs)
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
+        self.units = units
 
     def build(self, input_shape):
-        self.n_features = input_shape[-1]
-        self.feature_weights = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="glorot_uniform", trainable=True, name="tokenizer_weights"
+        self.w = self.add_weight(
+            shape=(input_shape[-1], self.units),
+            initializer="glorot_uniform", trainable=True, name="attention_kernel"
         )
-        self.feature_biases = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="zeros", trainable=True, name="tokenizer_biases"
+        self.b = self.add_weight(
+            shape=(self.units,),
+            initializer="zeros", trainable=True, name="attention_bias"
         )
-        self.mha = tf.keras.layers.MultiHeadAttention(num_heads=self.num_heads, key_dim=self.embed_dim)
-        self.layernorm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.flatten = tf.keras.layers.Flatten()
-        super().build(input_shape)
+        self.attention_v = self.add_weight(
+            shape=(self.units, 1),
+            initializer="glorot_uniform", trainable=True, name="attention_v"
+        )
 
     def call(self, inputs):
-        x = tf.expand_dims(inputs, -1) * tf.expand_dims(self.feature_weights, 0) + tf.expand_dims(self.feature_biases, 0)
-        attn_out = self.mha(x, x)
-        x = self.layernorm(x + attn_out)
-        return self.flatten(x)
+        score             = tf.nn.tanh(tf.matmul(inputs, self.w) + self.b)
+        attention_weights = tf.nn.softmax(tf.matmul(score, self.attention_v), axis=-1)
+        return inputs * attention_weights
 
     def get_config(self):
         config = super().get_config()
-        config.update({"embed_dim": self.embed_dim, "num_heads": self.num_heads})
+        config.update({"units": self.units})
         return config
+
 
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class BurnoutFocalLoss(tf.keras.losses.Loss):
-    def __init__(self, gamma=2.0, alpha=0.25, **kwargs):
+class WeightedCategoricalCrossentropy(tf.keras.losses.Loss):
+    """Custom loss dengan bobot per kelas dan label smoothing."""
+
+    def __init__(self, class_weights: list = None, label_smoothing: float = 0.0, **kwargs):
         super().__init__(**kwargs)
-        self.gamma = gamma
-        self.alpha = alpha
+        weights = class_weights if class_weights is not None else [1.0, 1.0, 1.0]
+        self.class_weights   = tf.constant(weights, dtype=tf.float32)
+        self.label_smoothing = tf.constant(label_smoothing, dtype=tf.float32)
 
     def call(self, y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1.0 - tf.keras.backend.epsilon())
-        cross_entropy = -y_true * tf.math.log(y_pred)
-        weight = self.alpha * tf.math.pow((1.0 - y_pred), self.gamma)
-        return tf.reduce_mean(tf.reduce_sum(weight * cross_entropy, axis=-1))
+        y_true     = tf.cast(y_true, tf.int32)
+        y_pred     = tf.clip_by_value(y_pred, 1e-7, 1.0)
+        y_onehot   = tf.one_hot(y_true, depth=NUM_CLASSES)
+        y_smoothed = y_onehot * (1.0 - self.label_smoothing) + (self.label_smoothing / NUM_CLASSES)
+        ce         = -tf.reduce_sum(y_smoothed * tf.math.log(y_pred), axis=-1)
+        sample_w   = tf.gather(self.class_weights, y_true)
+        return tf.reduce_mean(ce * sample_w)
 
     def get_config(self):
         config = super().get_config()
-        config.update({"gamma": self.gamma, "alpha": self.alpha})
+        config.update({
+            "class_weights":   self.class_weights.numpy().tolist(),
+            "label_smoothing": self.label_smoothing.numpy().item()
+        })
         return config
 
 
+# Inference
+def predict_burnout(raw_input: dict, inference_model, inference_scaler) -> dict:
+    missing = [c for c in FEATURE_COLS if c not in raw_input]
+    if missing:
+        raise ValueError(f"[ERROR] Fitur berikut tidak ditemukan dalam input: {missing}")
+
+    x_raw   = np.array([[raw_input[c] for c in FEATURE_COLS]], dtype=np.float32)
+
+    cbr_idx = FEATURE_COLS.index("commit_bug_ratio") if "commit_bug_ratio" in FEATURE_COLS else -1
+    if cbr_idx >= 0:
+        x_raw[0, cbr_idx] = min(x_raw[0, cbr_idx], 220.0)
+
+    x_scaled  = inference_scaler.transform(x_raw).astype(np.float32)
+    clf_probs  = inference_model.predict(x_scaled, verbose=0)
+    probs      = clf_probs[0]
+    pred_cls   = int(np.argmax(probs))
+
+    return {
+        "label":       CLASS_LABELS[pred_cls],
+        "confidence":  float(probs[pred_cls]),
+        "class_probs": {CLASS_LABELS[i]: float(p) for i, p in enumerate(probs)},
+    }
+
+
+# GenAI Advisory
+def build_advisory_prompt(prediction_result: dict, user_context: dict = None) -> str:
+    label       = prediction_result["label"]
+    confidence  = prediction_result["confidence"]
+    class_probs = prediction_result["class_probs"]
+
+    context_str = ""
+    if user_context:
+        name       = user_context.get("name", "Developer")
+        work_hours = user_context.get("work_hours", None)
+        role       = user_context.get("role", None)
+
+        context_str = f"Developer yang dianalisis bernama {name}."
+        if work_hours:
+            context_str += f" Ia bekerja rata-rata {work_hours} jam per hari."
+        if role:
+            context_str += f" Role-nya adalah {role}."
+
+    return (
+        f"Kamu adalah asisten kesehatan mental profesional untuk developer perangkat lunak.\n"
+        f"{context_str}\n"
+        f"Berdasarkan analisis AI, developer ini terdeteksi berada di level burnout: **{label}** "
+        f"(confidence: {confidence:.1%}).\n"
+        f"Distribusi probabilitas kelas: {class_probs}.\n\n"
+        f"Berikan 5 rekomendasi konkret dan personal dalam bahasa Indonesia yang:\n"
+        f"1. Spesifik untuk level burnout '{label}'\n"
+        f"2. Dapat langsung diterapkan oleh developer\n"
+        f"3. Mencakup aspek: manajemen waktu, kesehatan fisik, dan produktivitas\n"
+        f"Tutup dengan kalimat motivasi singkat."
+    )
+
+def get_burnout_advice_sdk(prompt: str) -> str:
+    client   = genai.Client(api_key=GEMINI_API_KEY)
+    response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+    return response.text
+
+def get_burnout_advice_rest(prompt: str) -> str:
+    if not GEMINI_API_KEY:
+        return "[INFO] GEMINI_API_KEY tidak ditemukan."
+    url     = f"{GEMINI_BASE_URL}/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 1024},
+    }
+    resp = requests.post(url, json=payload, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+def get_burnout_advice_groq(prompt: str) -> str:
+    if not GROQ_API_KEY:
+        raise ValueError("GROQ_API_KEY tidak ditemukan.")
+    url     = f"{GROQ_BASE_URL}chat/completions"
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": GROQ_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 1024,
+    }
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["choices"][0]["message"]["content"]
+
+def _offline_fallback(label: str) -> str:
+    label = label.lower()
+    if label == "high":
+        return (
+            "Tingkat burnout Anda TINGGI.\n"
+            "1. Segera jadwalkan waktu istirahat atau cuti panjang.\n"
+            "2. Diskusikan pendelegasian tugas dengan manajer.\n"
+            "3. Cari bantuan profesional (psikolog/konselor) jika kewalahan.\n"
+            "4. Batasi jam kerja secara ketat, hindari membuka pekerjaan di luar jam kantor.\n"
+            "5. Lakukan aktivitas fisik ringan setiap hari, minimal jalan kaki santai.\n\n"
+            "Kesehatan mentalmu jauh lebih berharga daripada tenggat waktu mana pun. Istirahatlah!"
+        )
+    elif label == "medium":
+        return (
+            "Tingkat burnout Anda SEDANG.\n"
+            "1. Rapikan manajemen waktu dengan metode Pomodoro atau Timeblocking.\n"
+            "2. Hindari lembur yang tidak perlu, kenali batas energimu.\n"
+            "3. Gunakan akhir pekan untuk hobi dan kegiatan yang merilekskan pikiran.\n"
+            "4. Sempatkan peregangan kecil dan istirahat mata (aturan 20-20-20).\n"
+            "5. Katakan 'tidak' pada tugas tambahan jika kapasitasmu sudah penuh.\n\n"
+            "Cegah burnout sebelum semakin parah dengan mulai mengatur keseimbangan hidup."
+        )
+    else:
+        return (
+            "Tingkat burnout Anda RENDAH.\n"
+            "1. Pertahankan rutinitas kerja dan work-life balance saat ini.\n"
+            "2. Jaga pola makan, tidur, dan olahraga yang teratur.\n"
+            "3. Tetap waspada jika beban kerja tiba-tiba meningkat tajam.\n"
+            "4. Lanjutkan praktik manajemen waktu yang sudah berjalan baik.\n"
+            "5. Berikan apresiasi kepada diri sendiri atas pekerjaan yang diselesaikan.\n\n"
+            "Bagus sekali! Pertahankan energimu dan teruslah berkarya secara sehat."
+        )
+
+
+def get_burnout_advice(prediction_result: dict, primary: str = "gemini", user_context: dict = None) -> tuple:
+    prompt = build_advisory_prompt(prediction_result, user_context)
+
+    def call_gemini():
+        if GENAI_SDK_AVAILABLE and GEMINI_API_KEY:
+            return get_burnout_advice_sdk(prompt), "Gemini (SDK)"
+        elif GEMINI_API_KEY:
+            return get_burnout_advice_rest(prompt), "Gemini (REST)"
+        raise ValueError("GEMINI_API_KEY tidak tersedia.")
+
+    def call_groq():
+        return get_burnout_advice_groq(prompt), "Groq (REST)"
+
+    try:
+        return call_gemini() if primary == "gemini" else call_groq()
+    except Exception as e:
+        print(f"[GENAI WARNING] {primary.upper()} gagal ({e}). Mencoba fallback...")
+        try:
+            return call_groq() if primary == "gemini" else call_gemini()
+        except Exception as fe:
+            fallback_api = "GROQ" if primary == "gemini" else "GEMINI"
+            print(f"[GENAI WARNING] {fallback_api} juga gagal ({fe}). Beralih ke Offline Mode...")
+            return _offline_fallback(prediction_result.get("label", "low")), "Offline (Rule-Based)"
+
+
+# Main
 def main():
-    parser = argparse.ArgumentParser(description="BurnAway Standalone Inference Script")
-    parser.add_argument("--age", type=float, default=32.0, help="Age of the developer")
-    parser.add_argument("--exp", type=float, default=8.0, help="Experience in years")
-    parser.add_argument("--work", type=float, default=12.5, help="Daily work hours")
-    parser.add_argument("--sleep", type=float, default=5.0, help="Sleep hours")
-    parser.add_argument("--screen", type=float, default=16.0, help="Screen time hours")
-    parser.add_argument("--stress", type=float, default=85.0, help="Stress level (0-100)")
+    parser = argparse.ArgumentParser(description="BurnAway Standalone CLI Inference")
+    parser.add_argument("--age",        type=float, default=28.0,  help="Usia developer")
+    parser.add_argument("--exp",        type=float, default=3.0,   help="Tahun pengalaman kerja")
+    parser.add_argument("--work",       type=float, default=11.5,  help="Jam kerja per hari")
+    parser.add_argument("--sleep",      type=float, default=5.2,   help="Jam tidur per hari")
+    parser.add_argument("--caffeine",   type=float, default=5.0,   help="Konsumsi kafein per hari")
+    parser.add_argument("--bugs",       type=float, default=14.0,  help="Jumlah bug per hari")
+    parser.add_argument("--commits",    type=float, default=7.0,   help="Jumlah commit per hari")
+    parser.add_argument("--meetings",   type=float, default=6.0,   help="Jumlah meeting per hari")
+    parser.add_argument("--screen",     type=float, default=13.5,  help="Jam screen time per hari")
+    parser.add_argument("--exercise",   type=float, default=0.3,   help="Jam olahraga per hari")
+    parser.add_argument("--stress",     type=float, default=5.0,   help="Tingkat stres (skala)")
+    parser.add_argument("--name",       type=str,   default=None,  help="Nama developer (opsional)")
+    parser.add_argument("--role",       type=str,   default=None,  help="Role developer (opsional)")
+    parser.add_argument("--primary",    type=str,   default="gemini", choices=["gemini", "groq"],
+                        help="Provider GenAI utama (default: gemini)")
     args = parser.parse_args()
 
-    model_path = os.path.join("models", "burnaway_model_best.keras")
-    scaler_path = os.path.join("models", "scaler.joblib")
-
-    print("Loading Model and Scaler...")
+    # Load model & scaler
+    print("[INFO] Loading model dan scaler...")
     try:
         model = tf.keras.models.load_model(
-            model_path,
+            MODEL_PATH,
             custom_objects={
-                "FTTransformerBlock": FTTransformerBlock,
-                "BurnoutFocalLoss": BurnoutFocalLoss,
-            },
+                "BurnoutAttentionLayer":          BurnoutAttentionLayer,
+                "WeightedCategoricalCrossentropy": WeightedCategoricalCrossentropy,
+            }
         )
-        scaler = joblib.load(scaler_path)
+        scaler = joblib.load(SCALER_PATH)
+        print("[OK] Model dan scaler berhasil dimuat.\n")
     except FileNotFoundError as e:
-        print(f"Error: {e}")
-        print("Please ensure the notebook has been executed completely to generate the model and scaler in the 'models' directory.")
+        print(f"[ERROR] {e}")
+        print("Pastikan notebook sudah dijalankan hingga selesai untuk menghasilkan model dan scaler.")
         return
 
-    # Calculate engineered features
-    # Defaults for other parameters not passed as args
-    caffeine_intake = 6.0
-    bugs_per_day = 14.0
-    commits_per_day = 3.0
-    meetings_per_day = 7.0
-    exercise_hours = 0.1
-
-    work_sleep_ratio = args.work / (args.sleep + 0.1)
+    # Hitung engineered features
+    work_sleep_ratio      = args.work / (args.sleep + 0.1)
     screen_time_intensity = args.screen / (args.work + 0.1)
-    commit_bug_ratio = commits_per_day / (bugs_per_day + 0.1)
+    commit_bug_ratio      = args.commits / (args.bugs + 0.1)
 
     if work_sleep_ratio <= 1:
-        work_category = 0
+        work_category = 0.0
     elif work_sleep_ratio <= 2:
-        work_category = 1
+        work_category = 1.0
     elif work_sleep_ratio <= 3:
-        work_category = 2
+        work_category = 2.0
     else:
-        work_category = 3
+        work_category = 3.0
 
-    features = [
-        args.age, args.exp, args.work, args.sleep, caffeine_intake,
-        bugs_per_day, commits_per_day, meetings_per_day, args.screen,
-        exercise_hours, args.stress,
-        work_sleep_ratio, screen_time_intensity, commit_bug_ratio, float(work_category)
-    ]
-    
-    feature_names = [
-        "age", "experience_years", "daily_work_hours", "sleep_hours",
-        "caffeine_intake", "bugs_per_day", "commits_per_day", "meetings_per_day",
-        "screen_time", "exercise_hours", "stress_level",
-        "work_sleep_ratio", "screen_time_intensity", "commit_bug_ratio", "work_category"
-    ]
+    raw_input = {
+        "age":                  args.age,
+        "experience_years":     args.exp,
+        "daily_work_hours":     args.work,
+        "sleep_hours":          args.sleep,
+        "caffeine_intake":      args.caffeine,
+        "bugs_per_day":         args.bugs,
+        "commits_per_day":      args.commits,
+        "meetings_per_day":     args.meetings,
+        "screen_time":          args.screen,
+        "exercise_hours":       args.exercise,
+        "work_sleep_ratio":     work_sleep_ratio,
+        "screen_time_intensity": screen_time_intensity,
+        "commit_bug_ratio":     commit_bug_ratio,
+        "work_category":        work_category,
+        "stress_level":         args.stress,
+    }
 
-    print("\n[Input Features]")
-    for n, v in zip(feature_names, features):
-        print(f"  {n:<22} : {v:.2f}")
+    # Tampilkan input
+    print("[Input Features]")
+    for k, v in raw_input.items():
+        print(f"  {k:<25} : {v:.2f}")
 
-    feature_array = np.array(features, dtype=np.float32).reshape(1, -1)
-    feature_scaled = scaler.transform(feature_array).astype(np.float32)
+    # Prediksi
+    prediction = predict_burnout(raw_input, model, scaler)
 
-    # Multi-task inference
-    outputs = model(feature_scaled, training=False)
-    clf_logits = outputs[0].numpy()[0]
-    reg_out = outputs[1].numpy()[0][0]
-
-    probabilities = tf.nn.softmax(clf_logits).numpy()
-    predicted_class = int(np.argmax(probabilities))
-    confidence = float(np.max(probabilities))
-    stress_est = float(reg_out) * 100
-    
-    label_map = {0: "Low", 1: "Medium", 2: "High"}
-    burnout_level = label_map[predicted_class]
-
-    print("\n=======================================================")
-    print("                BURNOUT PREDICTION")
-    print("=======================================================")
-    print(f"  Predicted Level : {burnout_level}")
-    print(f"  Confidence      : {confidence:.1%}")
-    print(f"  Stress Estimate : {stress_est:.1f} / 100")
+    print("\n" + "=" * 55)
+    print("              BURNOUT PREDICTION")
+    print("=" * 55)
+    print(f"  Predicted Level : {prediction['label']}")
+    print(f"  Confidence      : {prediction['confidence']:.2%}")
     print("\n  Probability Distribution:")
-    for i, label in label_map.items():
-        bar = "#" * int(probabilities[i] * 40)
-        print(f"    {label:<8} : {probabilities[i]:.4f} |{bar}")
-    print("=======================================================\n")
+    for label, prob in prediction["class_probs"].items():
+        bar = "#" * int(prob * 40)
+        print(f"    {label:<8} : {prob:.4f} |{bar}")
+    print("=" * 55)
 
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if api_key:
-        print("Generating AI Advice using Gemini...")
-        genai.configure(api_key=api_key)
-        gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-        prompt = (
-            f"Developer memprediksi burnout: {burnout_level} (kerja {args.work} jam, tidur {args.sleep} jam). "
-            "Beri 3 saran singkat bahasa Indonesia."
-        )
-        try:
-            res = gemini_model.generate_content(prompt)
-            print("\n[AI Advice]\n" + res.text)
-        except Exception as e:
-            print(f"Failed to get AI advice: {e}")
-    else:
-        print("Tip: Set GEMINI_API_KEY environment variable to see AI advice.")
+    # User context untuk GenAI
+    user_context = None
+    if args.name or args.role:
+        user_context = {
+            "name":       args.name or "Developer",
+            "work_hours": args.work,
+            "role":       args.role,
+        }
+
+    # GenAI Advisory
+    print(f'\n[GENAI] Generating advice via {args.primary.upper()}...')
+    advice, route = get_burnout_advice(prediction, primary=args.primary, user_context=user_context)
+    print(f"[GENAI] Routing: {route} | Model: {GROQ_MODEL if 'Groq' in route else GEMINI_MODEL}")
+    print(f"\n[REKOMENDASI UNTUK {prediction['label'].upper()} BURNOUT]")
+    print("-" * 55)
+    print(advice)
+    print("=" * 55)
+
 
 if __name__ == "__main__":
     main()
