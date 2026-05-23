@@ -80,7 +80,7 @@ Jalankan notebook `notebooks/BurnAway_AI_Engineer.ipynb`. Notebook ini akan meng
 ### B. Uji Coba CLI
 Gunakan skrip `inference.py` untuk prediksi cepat via terminal:
 ```bash
-python inference.py --age 28 --exp 5 --work 11.5 --sleep 6 --screen 12 --stress 80
+python inference.py --age 28 --exp 3 --work 11.5 --sleep 5.2 --caffeine 5 --bugs 14 --commits 7 --meetings 6 --screen 13.5 --exercise 0.3 --stress 5 --name Budi --role "Backend Engineer" --primary groq
 ```
 
 ### C. Deployment API
