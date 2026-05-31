@@ -35,7 +35,7 @@ model = None
 scaler = None
 
 # Constants
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "burnaway_model_best.keras")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "burnaway_model.keras")
 SCALER_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "scaler.joblib")
 LABEL_MAP = {0: "Low", 1: "Medium", 2: "High"}
 
