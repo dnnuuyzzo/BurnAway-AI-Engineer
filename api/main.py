@@ -196,10 +196,11 @@ async def predict_burnout(request: Request, data: DeveloperData):
     # 4. GenAI Advice
     advice = ""
     api_key = os.environ.get("GEMINI_API_KEY")
+    gemini_model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            gemini_model = genai.GenerativeModel(gemini_model_name)
             prompt = (
                 "Kamu adalah seorang psikolog industri berpengalaman yang membantu "
                 "developer mengelola kesehatan kerja mereka. Berikan saran yang empatik "
