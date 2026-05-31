@@ -143,6 +143,7 @@ def build_advisory_prompt(prediction_result: dict, user_context: dict = None) ->
         f"Berdasarkan analisis AI, developer ini terdeteksi berada di level burnout: **{label}** "
         f"(confidence: {confidence:.1%}).\n"
         f"Distribusi probabilitas kelas: {class_probs}.\n\n"
+        f"Gunakan format Markdown yang rapi: heading pendek, numbered list, dan **bold** untuk kata kunci penting.\n"
         f"Berikan 5 rekomendasi konkret dan personal dalam bahasa Indonesia yang:\n"
         f"1. Spesifik untuk level burnout '{label}'\n"
         f"2. Dapat langsung diterapkan oleh developer\n"

@@ -252,8 +252,10 @@ async def predict_burnout(request: Request, data: DeveloperData):
                 "namun langsung. Seorang software developer diprediksi memiliki tingkat burnout: "
                 f"{burnout_level}. Developer memiliki jam kerja {data.daily_work_hours} jam, "
                 f"waktu tidur {data.sleep_hours} jam, dan screen time {data.screen_time} jam sehari. "
-                "Berikan 3 saran konkret dan personal (masing-masing 1-2 kalimat) untuk mengelola stres "
-                "dan mencegah burnout. Gunakan bahasa Indonesia yang natural dan tidak menggurui."
+                "Berikan 3 saran konkret dan personal untuk mengelola stres dan mencegah burnout. "
+                "Format jawaban wajib menggunakan Markdown yang rapi: mulai dengan heading pendek, "
+                "pakai numbered list, tebalkan kata kunci penting dengan **bold**, dan jangan gunakan HTML. "
+                "Gunakan bahasa Indonesia yang natural dan tidak menggurui."
             )
             response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
             advice = response.text
