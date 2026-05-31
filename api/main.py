@@ -52,55 +52,60 @@ ALL_FEATURES = RAW_FEATURES + [
 
 # Custom Components from Training
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class FTTransformerBlock(tf.keras.layers.Layer):
-    def __init__(self, embed_dim=16, num_heads=2, **kwargs):
+class BurnoutAttentionLayer(tf.keras.layers.Layer):
+    def __init__(self, units: int = 32, **kwargs):
         super().__init__(**kwargs)
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
+        self.units = units
 
     def build(self, input_shape):
-        self.n_features = input_shape[-1]
-        self.feature_weights = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="glorot_uniform", trainable=True, name="tokenizer_weights"
+        self.w = self.add_weight(
+            shape=(input_shape[-1], self.units),
+            initializer="glorot_uniform", trainable=True, name="attention_kernel"
         )
-        self.feature_biases = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="zeros", trainable=True, name="tokenizer_biases"
+        self.b = self.add_weight(
+            shape=(self.units,),
+            initializer="zeros", trainable=True, name="attention_bias"
         )
-        self.mha = tf.keras.layers.MultiHeadAttention(num_heads=self.num_heads, key_dim=self.embed_dim)
-        self.layernorm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.flatten = tf.keras.layers.Flatten()
-        super().build(input_shape)
+        self.attention_v = self.add_weight(
+            shape=(self.units, 1),
+            initializer="glorot_uniform", trainable=True, name="attention_v"
+        )
 
     def call(self, inputs):
-        x = tf.expand_dims(inputs, -1) * tf.expand_dims(self.feature_weights, 0) + tf.expand_dims(self.feature_biases, 0)
-        attn_out = self.mha(x, x)
-        x = self.layernorm(x + attn_out)
-        return self.flatten(x)
+        score             = tf.nn.tanh(tf.matmul(inputs, self.w) + self.b)
+        attention_weights = tf.nn.softmax(tf.matmul(score, self.attention_v), axis=-1)
+        return inputs * attention_weights
 
     def get_config(self):
         config = super().get_config()
-        config.update({"embed_dim": self.embed_dim, "num_heads": self.num_heads})
+        config.update({"units": self.units})
         return config
 
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class BurnoutFocalLoss(tf.keras.losses.Loss):
-    def __init__(self, gamma=2.0, alpha=0.25, **kwargs):
+class WeightedCategoricalCrossentropy(tf.keras.losses.Loss):
+    """Custom loss dengan bobot per kelas dan label smoothing."""
+
+    def __init__(self, class_weights: list = None, label_smoothing: float = 0.0, **kwargs):
         super().__init__(**kwargs)
-        self.gamma = gamma
-        self.alpha = alpha
+        weights = class_weights if class_weights is not None else [1.0, 1.0, 1.0]
+        self.class_weights   = tf.constant(weights, dtype=tf.float32)
+        self.label_smoothing = tf.constant(label_smoothing, dtype=tf.float32)
 
     def call(self, y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1.0 - tf.keras.backend.epsilon())
-        cross_entropy = -y_true * tf.math.log(y_pred)
-        weight = self.alpha * tf.math.pow((1.0 - y_pred), self.gamma)
-        return tf.reduce_mean(tf.reduce_sum(weight * cross_entropy, axis=-1))
+        y_true     = tf.cast(y_true, tf.int32)
+        y_pred     = tf.clip_by_value(y_pred, 1e-7, 1.0)
+        y_onehot   = tf.one_hot(y_true, depth=3)
+        y_smoothed = y_onehot * (1.0 - self.label_smoothing) + (self.label_smoothing / 3)
+        ce         = -tf.reduce_sum(y_smoothed * tf.math.log(y_pred), axis=-1)
+        sample_w   = tf.gather(self.class_weights, y_true)
+        return tf.reduce_mean(ce * sample_w)
 
     def get_config(self):
         config = super().get_config()
-        config.update({"gamma": self.gamma, "alpha": self.alpha})
+        config.update({
+            "class_weights":   self.class_weights.numpy().tolist(),
+            "label_smoothing": self.label_smoothing.numpy().item()
+        })
         return config
 
 
@@ -124,8 +129,8 @@ async def startup_event():
         model = tf.keras.models.load_model(
             MODEL_PATH,
             custom_objects={
-                "FTTransformerBlock": FTTransformerBlock,
-                "BurnoutFocalLoss": BurnoutFocalLoss
+                "BurnoutAttentionLayer": BurnoutAttentionLayer,
+                "WeightedCategoricalCrossentropy": WeightedCategoricalCrossentropy
             }
         )
         print(f"Model loaded from {MODEL_PATH}")
@@ -178,18 +183,16 @@ async def predict_burnout(request: Request, data: DeveloperData):
 
     # 3. Predict
     try:
-        # Multi-task inference: [classification_output, regression_output]
+        # Classification inference
         outputs = model(feature_scaled, training=False)
-        clf_logits = outputs[0].numpy()[0]
-        reg_out = outputs[1].numpy()[0][0]
+        # The model directly outputs probabilities (softmax)
+        probabilities = outputs.numpy()[0]
 
-        # Apply softmax to logits for classification
-        probabilities = tf.nn.softmax(clf_logits).numpy()
         predicted_class = int(np.argmax(probabilities))
         confidence = float(np.max(probabilities))
         burnout_level = LABEL_MAP[predicted_class]
         prob_dict = {LABEL_MAP[i]: float(probabilities[i]) for i in range(len(LABEL_MAP))}
-        stress_estimate = float(reg_out) * 100 # Scaling back to 0-100 if needed
+        stress_estimate = 0.0 # Regression task removed in current architecture
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model prediction error: {e}")
 
@@ -199,7 +202,7 @@ async def predict_burnout(request: Request, data: DeveloperData):
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            gemini_model = genai.GenerativeModel("gemini-3.1-flash-lite")
             prompt = (
                 "Kamu adalah seorang psikolog industri berpengalaman yang membantu "
                 "developer mengelola kesehatan kerja mereka. Berikan saran yang empatik "
