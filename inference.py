@@ -18,7 +18,7 @@ ATTENTION_UNITS = 64
 
 GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-GEMINI_MODEL    = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
+GEMINI_MODEL    = "gemini-2.5-flash"
 
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "")
 GROQ_BASE_URL   = "https://api.groq.com/openai/v1/"

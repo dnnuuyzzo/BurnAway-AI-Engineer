@@ -35,7 +35,7 @@ model = None
 scaler = None
 
 # Constants
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "burnaway_model.keras")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "burnaway_model_best.keras")
 SCALER_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "scaler.joblib")
 LABEL_MAP = {0: "Low", 1: "Medium", 2: "High"}
 
@@ -196,11 +196,10 @@ async def predict_burnout(request: Request, data: DeveloperData):
     # 4. GenAI Advice
     advice = ""
     api_key = os.environ.get("GEMINI_API_KEY")
-    gemini_model_name = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            gemini_model = genai.GenerativeModel(gemini_model_name)
+            gemini_model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = (
                 "Kamu adalah seorang psikolog industri berpengalaman yang membantu "
                 "developer mengelola kesehatan kerja mereka. Berikan saran yang empatik "
