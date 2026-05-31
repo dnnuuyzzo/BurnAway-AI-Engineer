@@ -6,7 +6,7 @@ import requests
 import tensorflow as tf
 
 try:
-    import google.generativeai as genai
+    from google import genai
     GENAI_SDK_AVAILABLE = True
 except ImportError:
     GENAI_SDK_AVAILABLE = False
@@ -18,7 +18,7 @@ ATTENTION_UNITS = 64
 
 GEMINI_API_KEY  = os.environ.get("GEMINI_API_KEY", "")
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-GEMINI_MODEL    = "gemini-2.5-flash"
+GEMINI_MODEL    = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 GROQ_API_KEY    = os.environ.get("GROQ_API_KEY", "")
 GROQ_BASE_URL   = "https://api.groq.com/openai/v1/"
@@ -27,8 +27,8 @@ GROQ_MODEL      = "llama-3.1-8b-instant"
 FEATURE_COLS = [
     "age", "experience_years", "daily_work_hours", "sleep_hours",
     "caffeine_intake", "bugs_per_day", "commits_per_day", "meetings_per_day",
-    "screen_time", "exercise_hours", "work_sleep_ratio",
-    "screen_time_intensity", "commit_bug_ratio", "work_category", "stress_level"
+    "screen_time", "exercise_hours", "stress_level", "work_sleep_ratio",
+    "screen_time_intensity", "commit_bug_ratio", "work_category"
 ]
 
 MODEL_PATH  = os.path.join("models", "burnaway_model.keras")
@@ -269,7 +269,8 @@ def main():
             custom_objects={
                 "BurnoutAttentionLayer":          BurnoutAttentionLayer,
                 "WeightedCategoricalCrossentropy": WeightedCategoricalCrossentropy,
-            }
+            },
+            compile=False,
         )
         scaler = joblib.load(SCALER_PATH)
         print("[OK] Model dan scaler berhasil dimuat.\n")

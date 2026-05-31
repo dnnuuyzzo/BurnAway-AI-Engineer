@@ -1,20 +1,22 @@
-from fastapi import FastAPI, HTTPException, Request
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import tensorflow as tf
-import numpy as np
-import joblib
+import json
 import os
-import google.generativeai as genai
 
-# Setup FastAPI App
+import joblib
+import numpy as np
+import tensorflow as tf
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from google import genai
+from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+
 app = FastAPI(
     title="BurnAway Inference API",
     description="API for predicting developer burnout and generating AI advice.",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -25,82 +27,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Setup Rate Limiting untuk proteksi API dan meminimalisir spam (Gemini API protection)
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Global variables for model and scaler
 model = None
 scaler = None
+FEATURE_COLS = []
+LABEL_MAP = {}
 
-# Constants
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "burnaway_model_best.keras")
-SCALER_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "scaler.joblib")
-LABEL_MAP = {0: "Low", 1: "Medium", 2: "High"}
+API_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(API_DIR, "..", "models", "burnaway_model.keras")
+SCALER_PATH = os.path.join(API_DIR, "..", "models", "scaler.joblib")
+FEATURE_COLS_PATH = os.path.join(API_DIR, "feature_cols.json")
+CLASS_LABELS_PATH = os.path.join(API_DIR, "class_labels.json")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
-# Feature definitions
-RAW_FEATURES = [
-    "age", "experience_years", "daily_work_hours", "sleep_hours",
-    "caffeine_intake", "bugs_per_day", "commits_per_day", "meetings_per_day",
-    "screen_time", "exercise_hours", "stress_level"
-]
 
-ALL_FEATURES = RAW_FEATURES + [
-    "work_sleep_ratio", "screen_time_intensity", "commit_bug_ratio", "work_category"
-]
-
-# Custom Components from Training
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class FTTransformerBlock(tf.keras.layers.Layer):
-    def __init__(self, embed_dim=16, num_heads=2, **kwargs):
+class BurnoutAttentionLayer(tf.keras.layers.Layer):
+    def __init__(self, units: int = 32, **kwargs):
         super().__init__(**kwargs)
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
+        self.units = units
 
     def build(self, input_shape):
-        self.n_features = input_shape[-1]
-        self.feature_weights = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="glorot_uniform", trainable=True, name="tokenizer_weights"
+        self.w = self.add_weight(
+            shape=(input_shape[-1], self.units),
+            initializer="glorot_uniform",
+            trainable=True,
+            name="attention_kernel",
         )
-        self.feature_biases = self.add_weight(
-            shape=(self.n_features, self.embed_dim),
-            initializer="zeros", trainable=True, name="tokenizer_biases"
+        self.b = self.add_weight(
+            shape=(self.units,),
+            initializer="zeros",
+            trainable=True,
+            name="attention_bias",
         )
-        self.mha = tf.keras.layers.MultiHeadAttention(num_heads=self.num_heads, key_dim=self.embed_dim)
-        self.layernorm = tf.keras.layers.LayerNormalization(epsilon=1e-6)
-        self.flatten = tf.keras.layers.Flatten()
-        super().build(input_shape)
+        self.attention_v = self.add_weight(
+            shape=(self.units, 1),
+            initializer="glorot_uniform",
+            trainable=True,
+            name="attention_v",
+        )
 
     def call(self, inputs):
-        x = tf.expand_dims(inputs, -1) * tf.expand_dims(self.feature_weights, 0) + tf.expand_dims(self.feature_biases, 0)
-        attn_out = self.mha(x, x)
-        x = self.layernorm(x + attn_out)
-        return self.flatten(x)
+        score = tf.nn.tanh(tf.matmul(inputs, self.w) + self.b)
+        attention_weights = tf.nn.softmax(tf.matmul(score, self.attention_v), axis=-1)
+        return inputs * attention_weights
 
     def get_config(self):
         config = super().get_config()
-        config.update({"embed_dim": self.embed_dim, "num_heads": self.num_heads})
+        config.update({"units": self.units})
         return config
 
+
 @tf.keras.utils.register_keras_serializable(package="Custom")
-class BurnoutFocalLoss(tf.keras.losses.Loss):
-    def __init__(self, gamma=2.0, alpha=0.25, **kwargs):
+class WeightedCategoricalCrossentropy(tf.keras.losses.Loss):
+    def __init__(self, class_weights: list = None, label_smoothing: float = 0.0, **kwargs):
         super().__init__(**kwargs)
-        self.gamma = gamma
-        self.alpha = alpha
+        weights = class_weights if class_weights is not None else [1.0, 1.0, 1.0]
+        self.class_weights = tf.constant(weights, dtype=tf.float32)
+        self.label_smoothing = tf.constant(label_smoothing, dtype=tf.float32)
 
     def call(self, y_true, y_pred):
-        y_true = tf.cast(y_true, tf.float32)
-        y_pred = tf.clip_by_value(y_pred, tf.keras.backend.epsilon(), 1.0 - tf.keras.backend.epsilon())
-        cross_entropy = -y_true * tf.math.log(y_pred)
-        weight = self.alpha * tf.math.pow((1.0 - y_pred), self.gamma)
-        return tf.reduce_mean(tf.reduce_sum(weight * cross_entropy, axis=-1))
+        num_classes = int(self.class_weights.shape[0])
+        y_true = tf.cast(y_true, tf.int32)
+        y_pred = tf.clip_by_value(y_pred, 1e-7, 1.0)
+        y_onehot = tf.one_hot(y_true, depth=num_classes)
+        y_smoothed = y_onehot * (1.0 - self.label_smoothing) + (
+            self.label_smoothing / float(num_classes)
+        )
+        ce = -tf.reduce_sum(y_smoothed * tf.math.log(y_pred), axis=-1)
+        sample_w = tf.gather(self.class_weights, y_true)
+        return tf.reduce_mean(ce * sample_w)
 
     def get_config(self):
         config = super().get_config()
-        config.update({"gamma": self.gamma, "alpha": self.alpha})
+        config.update(
+            {
+                "class_weights": self.class_weights.numpy().tolist(),
+                "label_smoothing": self.label_smoothing.numpy().item(),
+            }
+        )
         return config
 
 
@@ -117,43 +125,79 @@ class DeveloperData(BaseModel):
     exercise_hours: float
     stress_level: float
 
+
+def load_feature_cols():
+    with open(FEATURE_COLS_PATH, "r", encoding="utf-8") as file:
+        feature_cols = json.load(file)
+    if not isinstance(feature_cols, list) or not feature_cols:
+        raise ValueError("feature_cols.json must contain a non-empty list.")
+    return feature_cols
+
+
+def load_label_map():
+    with open(CLASS_LABELS_PATH, "r", encoding="utf-8") as file:
+        raw_labels = json.load(file)
+    if not isinstance(raw_labels, dict) or not raw_labels:
+        raise ValueError("class_labels.json must contain a non-empty object.")
+    return {int(index): str(label) for index, label in raw_labels.items()}
+
+
+def artifacts_ready():
+    return model is not None and scaler is not None and bool(FEATURE_COLS) and bool(LABEL_MAP)
+
+
 @app.on_event("startup")
 async def startup_event():
-    global model, scaler
+    global model, scaler, FEATURE_COLS, LABEL_MAP
+
     try:
+        FEATURE_COLS = load_feature_cols()
+        LABEL_MAP = load_label_map()
         model = tf.keras.models.load_model(
             MODEL_PATH,
             custom_objects={
-                "FTTransformerBlock": FTTransformerBlock,
-                "BurnoutFocalLoss": BurnoutFocalLoss
-            }
+                "BurnoutAttentionLayer": BurnoutAttentionLayer,
+                "WeightedCategoricalCrossentropy": WeightedCategoricalCrossentropy,
+            },
+            compile=False,
         )
-        print(f"Model loaded from {MODEL_PATH}")
-        
         scaler = joblib.load(SCALER_PATH)
+        print(f"Model loaded from {MODEL_PATH}")
         print(f"Scaler loaded from {SCALER_PATH}")
-    except Exception as e:
-        print(f"Warning: Failed to load model or scaler. Exception: {e}")
+        print(f"Loaded {len(FEATURE_COLS)} feature columns and {len(LABEL_MAP)} class labels.")
+    except Exception as exc:
+        model = None
+        scaler = None
+        FEATURE_COLS = []
+        LABEL_MAP = {}
+        raise RuntimeError(f"Failed to load BurnAway serving artifacts: {exc}") from exc
+
 
 @app.get("/health")
 def health_check():
-    return {
-        "status": "healthy",
+    status = {
+        "status": "healthy" if artifacts_ready() else "unhealthy",
         "model_loaded": model is not None,
-        "scaler_loaded": scaler is not None
+        "scaler_loaded": scaler is not None,
+        "feature_cols_loaded": bool(FEATURE_COLS),
+        "class_labels_loaded": bool(LABEL_MAP),
+        "gemini_model": GEMINI_MODEL,
     }
+    if not artifacts_ready():
+        raise HTTPException(status_code=503, detail=status)
+    return status
+
 
 @app.post("/predict_burnout")
 @limiter.limit("5/minute")
 async def predict_burnout(request: Request, data: DeveloperData):
-    if model is None or scaler is None:
-        raise HTTPException(status_code=500, detail="Model or Scaler not loaded.")
-    
-    # 1. Feature Engineering
+    if not artifacts_ready():
+        raise HTTPException(status_code=503, detail="Model, scaler, or config not loaded.")
+
     work_sleep_ratio = data.daily_work_hours / (data.sleep_hours + 0.1)
     screen_time_intensity = data.screen_time / (data.daily_work_hours + 0.1)
     commit_bug_ratio = data.commits_per_day / (data.bugs_per_day + 0.1)
-    
+
     if work_sleep_ratio <= 1:
         work_category = 0
     elif work_sleep_ratio <= 2:
@@ -162,44 +206,46 @@ async def predict_burnout(request: Request, data: DeveloperData):
         work_category = 2
     else:
         work_category = 3
-        
-    features_dict = data.dict()
-    features_dict["work_sleep_ratio"] = work_sleep_ratio
-    features_dict["screen_time_intensity"] = screen_time_intensity
-    features_dict["commit_bug_ratio"] = commit_bug_ratio
-    features_dict["work_category"] = float(work_category)
-    
-    # 2. Convert to array and scale
+
+    features_dict = data.model_dump()
+    features_dict.update(
+        {
+            "work_sleep_ratio": work_sleep_ratio,
+            "screen_time_intensity": screen_time_intensity,
+            "commit_bug_ratio": commit_bug_ratio,
+            "work_category": float(work_category),
+        }
+    )
+
     try:
-        feature_array = np.array([features_dict[f] for f in ALL_FEATURES], dtype=np.float32).reshape(1, -1)
+        missing_features = [feature for feature in FEATURE_COLS if feature not in features_dict]
+        if missing_features:
+            raise ValueError(f"Missing features: {missing_features}")
+        feature_array = np.array(
+            [features_dict[feature] for feature in FEATURE_COLS], dtype=np.float32
+        ).reshape(1, -1)
         feature_scaled = scaler.transform(feature_array).astype(np.float32)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Data processing error: {e}")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Data processing error: {exc}") from exc
 
-    # 3. Predict
     try:
-        # Multi-task inference: [classification_output, regression_output]
-        outputs = model(feature_scaled, training=False)
-        clf_logits = outputs[0].numpy()[0]
-        reg_out = outputs[1].numpy()[0][0]
-
-        # Apply softmax to logits for classification
-        probabilities = tf.nn.softmax(clf_logits).numpy()
+        probabilities = np.asarray(model.predict(feature_scaled, verbose=0)[0], dtype=np.float32)
         predicted_class = int(np.argmax(probabilities))
         confidence = float(np.max(probabilities))
         burnout_level = LABEL_MAP[predicted_class]
-        prob_dict = {LABEL_MAP[i]: float(probabilities[i]) for i in range(len(LABEL_MAP))}
-        stress_estimate = float(reg_out) * 100 # Scaling back to 0-100 if needed
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Model prediction error: {e}")
+        prob_dict = {
+            LABEL_MAP[i]: float(probabilities[i])
+            for i in range(len(LABEL_MAP))
+        }
+        stress_estimate = data.stress_level
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Model prediction error: {exc}") from exc
 
-    # 4. GenAI Advice
     advice = ""
     api_key = os.environ.get("GEMINI_API_KEY")
     if api_key:
         try:
-            genai.configure(api_key=api_key)
-            gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+            client = genai.Client(api_key=api_key)
             prompt = (
                 "Kamu adalah seorang psikolog industri berpengalaman yang membantu "
                 "developer mengelola kesehatan kerja mereka. Berikan saran yang empatik "
@@ -209,10 +255,10 @@ async def predict_burnout(request: Request, data: DeveloperData):
                 "Berikan 3 saran konkret dan personal (masing-masing 1-2 kalimat) untuk mengelola stres "
                 "dan mencegah burnout. Gunakan bahasa Indonesia yang natural dan tidak menggurui."
             )
-            response = gemini_model.generate_content(prompt)
+            response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
             advice = response.text
-        except Exception as e:
-            advice = f"GenAI advice generation failed: {e}"
+        except Exception as exc:
+            advice = f"GenAI advice generation failed: {exc}"
     else:
         advice = "GEMINI_API_KEY environment variable not set. Advice generation skipped."
 
@@ -220,18 +266,20 @@ async def predict_burnout(request: Request, data: DeveloperData):
         "prediction": {
             "burnout_level": burnout_level,
             "confidence": confidence,
-            "stress_estimate": round(stress_estimate, 2),
-            "probabilities": prob_dict
+            "stress_estimate": round(float(stress_estimate), 2),
+            "probabilities": prob_dict,
         },
         "engineered_features": {
             "work_sleep_ratio": work_sleep_ratio,
             "screen_time_intensity": screen_time_intensity,
             "commit_bug_ratio": commit_bug_ratio,
-            "work_category": work_category
+            "work_category": work_category,
         },
-        "advice": advice
+        "advice": advice,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
