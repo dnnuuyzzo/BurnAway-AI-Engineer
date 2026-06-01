@@ -1,3 +1,14 @@
+---
+title: BurnAway AI
+emoji: 🔥
+colorFrom: red
+colorTo: yellow
+sdk: docker
+pinned: false
+app_port: 8000
+---
+
+
 # 🔥 BurnAway AI Engineer Repository
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
