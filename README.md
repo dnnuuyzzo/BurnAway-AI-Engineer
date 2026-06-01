@@ -20,7 +20,7 @@
 ├── notebook/
 │   └── BurnAway_AI_Engineer.ipynb     # Main ML Pipeline (End-to-End)
 ├── models/                            # Artifacts hasil training
-│   ├── burnaway_model_best.keras      # Model terbaik (checkpoint)
+│   ├── burnaway_model.keras           # Model terbaik (checkpoint)
 │   ├── scaler.joblib                  # Scaler untuk preprocessing
 ├── data/                              # Dataset
 ├── logs/                              # TensorBoard training logs
@@ -70,12 +70,12 @@ export GROQ_API_KEY="your_groq_api_key_here"
 ## 📈 Alur Kerja
 
 ### A. Training & Export
-Jalankan notebook `notebooks/BurnAway_AI_Engineer.ipynb`. Notebook ini akan mengekspor:
+Jalankan notebook `notebook/BurnAway_AI_Engineer.ipynb`. Notebook ini akan mengekspor:
 - `models/burnaway_model.keras`
 - `models/scaler.joblib`
-- `models/class_labels.json`
-- `models/feature_cols.json`
-- `models/pipeline_config.json`
+- `api/class_labels.json`
+- `api/feature_cols.json`
+- `api/pipeline_config.json`
 
 ### B. Uji Coba CLI
 Gunakan skrip `inference.py` untuk prediksi cepat via terminal:
@@ -120,8 +120,13 @@ Akses dokumentasi interaktif di: `http://localhost:8000/docs`
     "stress_estimate": 78.5,
     "probabilities": { "Low": 0.01, "Medium": 0.07, "High": 0.92 }
   },
+  "engineered_features": {
+    "work_sleep_ratio": 1.67,
+    "screen_time_intensity": 1.2,
+    "commit_bug_ratio": 0.5,
+    "work_category": 1.0
+  },
   "advice": "..."
-  "route": "Groq (REST)"
 }
 ```
 
