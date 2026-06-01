@@ -189,7 +189,7 @@ def health_check():
 
 
 @app.post("/predict_burnout")
-@limiter.limit("5/minute")
+@limiter.limit("15/minute")
 async def predict_burnout(request: Request, data: DeveloperData):
     if not artifacts_ready():
         raise HTTPException(status_code=503, detail="Model, scaler, or config not loaded.")
