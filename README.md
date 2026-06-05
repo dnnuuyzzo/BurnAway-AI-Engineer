@@ -15,6 +15,8 @@ app_port: 8000
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org)
 [![Gemini AI](https://img.shields.io/badge/Gemini%20AI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 
+## 📖 Deskripsi Singkat Proyek
+
 **BurnAway** adalah solusi AI berbasis Deep Learning untuk mendeteksi tingkat *burnout* pada software developer secara dini. Proyek ini mencakup pipeline Machine Learning lengkap, dari pemrosesan data, pelatihan model *multi-task*, hingga deployment API.
 
 ---
@@ -57,7 +59,7 @@ app_port: 8000
 
 ---
 
-## 🛠️ Persiapan & Instalasi
+## 🛠️ Petunjuk Setup Environment
  
 ### 1. Instalasi Dependensi
  
@@ -78,7 +80,11 @@ export GROQ_API_KEY="your_groq_api_key_here"
  
 ---
 
-## 📈 Alur Kerja
+## 🔗 Tautan Model ML (Jika Ada)
+
+Model Machine Learning dilatih secara lokal menggunakan notebook yang disediakan dan disimpan di direktori `models/burnaway_model.keras`.
+
+## 🚀 Cara Menjalankan Aplikasi
 
 ### A. Training & Export
 Jalankan notebook `notebook/BurnAway_AI_Engineer.ipynb`. Notebook ini akan mengekspor:
